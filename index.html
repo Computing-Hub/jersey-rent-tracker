@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jersey Rent Tracker | What Does Jersey Really Pay?</title>
-<meta name="description" content="Track Jersey property prices and rents. Open government data combined with crowdsourced real rent submissions from tenants across the island.">
-<meta property="og:title" content="Jersey Rent Tracker">
-<meta property="og:description" content="What does Jersey really pay? Track property prices and rents across all 12 parishes.">
+<title>Jersey Rent Tracker | Can You Afford to Live Here?</title>
+<meta name="description" content="A learn-by-doing tool for Jersey housing &amp; personal finance. Pick a parish, see the deposit, mortgage, salary, payslip, taxes and trade-offs — then decide.">
+<meta property="og:title" content="Jersey Rent Tracker — Can You Afford to Live Here?">
+<meta property="og:description" content="Pick a parish. See what it really costs: deposit, mortgage, salary, tax, pension, what's left. Personal finance, made practical.">
 <meta property="og:type" content="website">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,18 +18,21 @@
 <nav>
   <div class="logo">Rent<span>Tracker</span>.je</div>
   <ul>
+    <li><a href="#afford">Afford</a></li>
     <li><a href="#prices">Prices</a></li>
     <li><a href="#rentals">Rentals</a></li>
     <li><a href="#map-section">Map</a></li>
+    <li><a href="#invest">Invest</a></li>
     <li><a href="#submit">Submit</a></li>
+    <li><a href="#vote">Vote</a></li>
     <li><a href="#community">Community <span class="nav-badge" id="submissionCount">0</span></a></li>
   </ul>
 </nav>
 
 <!-- HERO -->
 <div class="hero">
-  <h1>What Does Jersey <span>Really</span> Pay?</h1>
-  <p>Property prices &amp; rents across all 12 parishes — powered by gov.je open data and anonymous submissions from real tenants.</p>
+  <h1>Can You <span>Afford</span> to Live Here?</h1>
+  <p>Pick a parish. See the deposit, the mortgage, the salary you'd need, your payslip after tax — and what's left for the rest of life. Personal finance, made practical.</p>
   <div class="hero-stats">
     <div class="hero-stat">
       <div class="val">£299k</div>
@@ -48,10 +51,153 @@
       <div class="label">Renters in stress</div>
     </div>
   </div>
-  <div style="margin-top:1rem;position:relative">
-    <span id="dataStatus" class="data-status offline">Checking…</span>
+  <div style="margin-top:1.5rem;position:relative">
+    <a href="#afford" class="hero-cta">Start the journey →</a>
+    <div style="margin-top:0.75rem"><span id="dataStatus" class="data-status offline">Checking…</span></div>
   </div>
 </div>
+
+<!-- AFFORDABILITY JOURNEY -->
+<section id="afford">
+  <h2 class="section-title">The Affordability Journey</h2>
+  <p class="section-sub">Six steps from "I'd like to live here" to "this is what my month actually looks like". Change any input — everything else updates.</p>
+
+  <div class="journey">
+
+    <!-- STEP 1: WHERE -->
+    <div class="journey-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Where do you want to live?</h3>
+        <div class="journey-controls">
+          <div class="form-group">
+            <label for="affParish">Parish</label>
+            <select id="affParish">
+              <option value="SH">St Helier</option><option value="SC">St Clement</option>
+              <option value="SS">St Saviour</option><option value="SB">St Brelade</option>
+              <option value="SL">St Lawrence</option><option value="TR">Trinity</option>
+              <option value="GR">Grouville</option><option value="SM">St Martin</option>
+              <option value="SMa">St Mary</option><option value="SO">St Ouen</option>
+              <option value="SP">St Peter</option><option value="SJ">St John</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="affBeds">Property</label>
+            <select id="affBeds">
+              <option value="f1">1-bed Flat</option>
+              <option value="f2" selected>2-bed Flat</option>
+              <option value="h2">2-bed House</option>
+              <option value="h3">3-bed House</option>
+              <option value="h4">4-bed House</option>
+            </select>
+          </div>
+        </div>
+        <div class="journey-output">
+          <div class="big-number" id="outPrice">£—</div>
+          <div class="big-label">average price (latest quarter)</div>
+        </div>
+        <div class="callout">
+          <strong>Why does parish matter?</strong> Jersey land is finite (≈118 km²). Parishes near the harbour, schools and the finance centre command a premium; quieter rural ones cost less but you pay in commute time. Same property type, different postcode — the price gap is the price of convenience.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: DEPOSIT -->
+    <div class="journey-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>The deposit — how long to save?</h3>
+        <div class="journey-controls">
+          <div class="form-group">
+            <label>Deposit % <span class="control-val" id="affDepositVal">10%</span></label>
+            <input type="range" id="affDeposit" min="5" max="25" value="10" step="1">
+          </div>
+          <div class="form-group">
+            <label>You can save £<span class="control-val" id="affSaveVal">500</span>/month</label>
+            <input type="range" id="affSave" min="100" max="2500" value="500" step="50">
+          </div>
+        </div>
+        <div class="journey-output-grid">
+          <div><div class="big-number" id="outDeposit">£—</div><div class="big-label">deposit needed</div></div>
+          <div><div class="big-number" id="outYears">— yrs</div><div class="big-label">to save that</div></div>
+        </div>
+        <div class="callout">
+          <strong>Why save more?</strong> Lenders charge a higher rate when you borrow more of the price (Loan-to-Value). 10% down vs 20% down can shift your rate by 0.5–1.5%, which compounds over 25 years into tens of thousands. Saving the deposit also proves to lenders — and to yourself — that you can stick to a budget.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: MORTGAGE -->
+    <div class="journey-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>The mortgage — what you actually pay</h3>
+        <div class="journey-controls">
+          <div class="form-group">
+            <label>Term <span class="control-val" id="affTermVal">25</span> years</label>
+            <input type="range" id="affTerm" min="10" max="35" value="25" step="1">
+          </div>
+          <div class="form-group">
+            <label>Interest rate <span class="control-val" id="affRateVal">5.0</span>%</label>
+            <input type="range" id="affRate" min="2" max="9" value="5" step="0.1">
+          </div>
+        </div>
+        <div class="journey-output-grid three">
+          <div><div class="big-number" id="outBorrow">£—</div><div class="big-label">you borrow</div></div>
+          <div><div class="big-number" id="outMonthly">£—</div><div class="big-label">monthly payment</div></div>
+          <div><div class="big-number" id="outInterest">£—</div><div class="big-label">total interest paid</div></div>
+        </div>
+        <div class="callout">
+          <strong>Compound interest, the hard way.</strong> Over a 25-year mortgage you typically pay back roughly <em>double</em> what you borrowed. That extra is interest — the price of using someone else's money. Shorter terms and lower rates save tens of thousands. This is the same maths that <em>helps</em> you in step 6 when you invest.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: SALARY -->
+    <div class="journey-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>What salary do you need?</h3>
+        <p class="card-muted">Lenders typically cap mortgage at ~4.5× your gross annual salary, or want repayments under ~35% of take-home. We use the stricter of the two.</p>
+        <div class="journey-output">
+          <div class="big-number" id="outSalary">£—</div>
+          <div class="big-label">gross salary required (approx.)</div>
+        </div>
+        <div class="job-match" id="jobMatch"></div>
+        <div class="callout">
+          <strong>This is why career choice matters.</strong> Median full-time pay in Jersey is around £45–50k. To buy in St Brelade you may need finance, law, senior public sector or two earners. The "job ladder" isn't just about ambition — it's about which housing options stay open to you.
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5: PAYSLIP -->
+    <div class="journey-step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Your Jersey payslip</h3>
+        <p class="card-muted">Simplified for learning: 20% income tax above the ~£20,500 exemption, 6% employee social security, optional 5% pension.</p>
+        <div class="payslip" id="payslip"></div>
+        <div class="callout">
+          <strong>Where does the deduction go?</strong> Income tax funds States of Jersey services — health, education, infrastructure, benefits. Social security funds the States pension, maternity allowance, long-term care. Your pension contribution is paying your future self. None of this is "lost" — but you should know who's deciding how it's spent (that's step 6 of life, called <a href="#vote">voting</a>).
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6: NEEDS / WANTS / SAVE -->
+    <div class="journey-step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h3>What's left — needs, wants &amp; future</h3>
+        <p class="card-muted">After the mortgage, your take-home funds everything else. A common starting frame is 50% needs / 30% wants / 20% save &amp; invest — adjust to your values.</p>
+        <div class="budget" id="budget"></div>
+        <div class="callout">
+          <strong>This split is a choice, not a rule.</strong> Push savings up to retire earlier or buy faster. Push wants up to enjoy now. Credit cards (≈24% APR) and personal loans turn "wants now" into "much more, later" — the same compound interest, against you. <a href="#invest">Step into "Invest"</a> to see what your savings could become.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
 
 <!-- PURCHASE PRICE TRENDS -->
 <section id="prices">
@@ -68,6 +214,17 @@
   </div>
   <div class="card">
     <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+  </div>
+
+  <div class="callout">
+    <strong>Why did prices move like that?</strong> Markets respond to many variables at once — supply, money, confidence and shocks.
+    <ul class="why-list">
+      <li><strong>2007–08:</strong> global financial crisis. Credit froze, transactions collapsed but Jersey held value better than the UK.</li>
+      <li><strong>2014–19:</strong> ultra-low interest rates made borrowing cheap → prices crept up faster than wages.</li>
+      <li><strong>2020–22:</strong> COVID savings + cheap money + remote work → demand spike. Peak £/m² ever recorded.</li>
+      <li><strong>2022–25:</strong> war in Ukraine pushed energy/inflation; central banks raised rates fast; mortgages got expensive; prices cooled.</li>
+    </ul>
+    Whoever tells you "houses always go up" is selling something. Prices are a story about wages, rates, supply and shocks — not gravity.
   </div>
 
   <div class="chart-row">
@@ -102,6 +259,10 @@
     <p class="card-muted">Left axis: index (2002 = 100). Right axis: advertised monthly rent (£). Note the 2013–2015 data gap when the Population Office stopped recording rents.</p>
     <div class="chart-wrap"><canvas id="rentalIndexChart"></canvas></div>
   </div>
+
+  <div class="callout">
+    <strong>Renting isn't "wasting money".</strong> It's paying for flexibility, no maintenance, and no mortgage interest. The fair comparison isn't "rent vs nothing" — it's "rent vs (mortgage interest + maintenance + opportunity cost of the deposit invested elsewhere)". For young earners moving jobs, renting often wins on the maths and on freedom. The trade-off: you don't capture price growth, and the landlord chooses the kitchen.
+  </div>
 </section>
 
 <!-- MAP -->
@@ -114,6 +275,59 @@
     <span><i style="background:#e8a838"></i> Medium (40–100)</span>
     <span><i style="background:#16697a"></i> Low (&lt;40)</span>
     <span><i style="background:#e8a838;border-radius:50%"></i> Rent submission</span>
+  </div>
+</section>
+
+<!-- INVESTMENT RISK -->
+<section id="invest">
+  <h2 class="section-title">Save it, or grow it?</h2>
+  <p class="section-sub">Suppose you can put a bit aside each month. Where you put it changes everything — and the right answer depends on who you are, not on a chart.</p>
+
+  <div class="card">
+    <div class="journey-controls">
+      <div class="form-group">
+        <label>Monthly contribution: £<span class="control-val" id="invAmtVal">200</span></label>
+        <input type="range" id="invAmt" min="25" max="1000" value="200" step="25">
+      </div>
+      <div class="form-group">
+        <label>For <span class="control-val" id="invYearsVal">20</span> years</label>
+        <input type="range" id="invYears" min="1" max="40" value="20" step="1">
+      </div>
+    </div>
+    <p class="card-muted">Returns shown are long-term illustrative averages, not predictions. Real returns vary year to year — and bitcoin has been ±80% in a single year.</p>
+
+    <div class="compare-grid">
+      <div class="compare-card" data-risk="low">
+        <div class="risk-tag">Risk-averse</div>
+        <h3>Cash / Premium savings</h3>
+        <p class="card-muted">~3% per year. Protected by the depositor scheme (up to £50k).</p>
+        <div class="big-number" id="invLow">£—</div>
+        <div class="big-label">after <span class="invYearsTxt">20</span> years</div>
+        <div class="invest-note" id="invLowNote"></div>
+      </div>
+
+      <div class="compare-card" data-risk="mid">
+        <div class="risk-tag">Balanced</div>
+        <h3>Global index fund</h3>
+        <p class="card-muted">~7% per year long-term average. Goes down sometimes — sometimes a lot.</p>
+        <div class="big-number" id="invMid">£—</div>
+        <div class="big-label">after <span class="invYearsTxt">20</span> years</div>
+        <div class="invest-note" id="invMidNote"></div>
+      </div>
+
+      <div class="compare-card" data-risk="high">
+        <div class="risk-tag">Risk-taker</div>
+        <h3>Bitcoin / single stock</h3>
+        <p class="card-muted">Could be 0×, could be 10×. Past performance is not a promise.</p>
+        <div class="big-number" id="invHigh">£— – £—</div>
+        <div class="big-label">range, after <span class="invYearsTxt">20</span> years</div>
+        <div class="invest-note" id="invHighNote"></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>The same compound interest that made your mortgage cost double is now working <em>for</em> you.</strong> Start earlier and the curve does most of the work — £200/mo for 40 years beats £400/mo for 20. Higher expected returns come with higher chance of loss. Bitcoin can ten-bag, or halve, in a year. Gov bonds barely beat inflation but you keep your money. Choose the mix you can actually <em>sleep through</em> in a bad year.
+    </div>
   </div>
 </section>
 
@@ -172,6 +386,43 @@
       <thead><tr><th>Parish</th><th>Type</th><th>Rent/mo</th><th>Since</th></tr></thead>
       <tbody id="crowdBody"></tbody>
     </table>
+  </div>
+</section>
+
+<!-- CIVIC STAKE -->
+<section id="vote">
+  <h2 class="section-title">Who's looking after your interests?</h2>
+  <p class="section-sub">The numbers above aren't just personal — they're political. Tax rates, housing policy, pension rules and benefits are decided by people you elect (or don't).</p>
+
+  <div class="card">
+    <h3>Over a working life at the salary from step 4…</h3>
+    <div class="vote-grid" id="voteStats"></div>
+    <p class="card-muted" style="margin-top:0.75rem">Rough lifetime contribution to States of Jersey, assuming today's rates hold (they won't — that's the point).</p>
+  </div>
+
+  <div class="card">
+    <h3>What that funds (States of Jersey, indicative)</h3>
+    <ul class="spend-list">
+      <li><span class="spend-bar" style="width:34%"></span><span class="spend-label">Health &amp; social services — 34%</span></li>
+      <li><span class="spend-bar" style="width:21%"></span><span class="spend-label">Children, young people, education &amp; skills — 21%</span></li>
+      <li><span class="spend-bar" style="width:14%"></span><span class="spend-label">Social security benefits &amp; pensions — 14%</span></li>
+      <li><span class="spend-bar" style="width:9%"></span><span class="spend-label">Infrastructure &amp; environment — 9%</span></li>
+      <li><span class="spend-bar" style="width:8%"></span><span class="spend-label">Justice &amp; home affairs — 8%</span></li>
+      <li><span class="spend-bar" style="width:14%"></span><span class="spend-label">Other (treasury, external relations, debt) — 14%</span></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Questions worth asking any Deputy candidate</h3>
+    <ul class="ask-list">
+      <li>What's your plan to keep housing affordable for under-35s?</li>
+      <li>Would you change the income tax exemption thresholds — and who benefits?</li>
+      <li>How will the States pension stay solvent as the island ages?</li>
+      <li>Should social housing supply grow, and how is it paid for?</li>
+      <li>What's your position on stamp duty for first-time buyers?</li>
+    </ul>
+    <p class="card-muted" style="margin-top:0.75rem">This site is non-partisan. The point isn't who to vote for — it's that the people setting these numbers should be answering for them.</p>
+    <p style="margin-top:1rem"><a class="vote-link" href="https://www.gov.je/Government/Pages/StatesAssembly.aspx" target="_blank">Find your Deputies on gov.je →</a></p>
   </div>
 </section>
 

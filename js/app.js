@@ -165,6 +165,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusEl.className = useFirebase ? 'data-status' : 'data-status offline';
   }
 
+  initAffordabilityJourney();
+  initInvestmentCalc();
   initPriceChart();
   initHPIChart();
   initRentalIndexChart();
@@ -174,6 +176,265 @@ document.addEventListener('DOMContentLoaded', async () => {
   initForm();
   await refreshCommunityData();
 });
+
+// ============================================================
+// AFFORDABILITY JOURNEY (educational centrepiece)
+// ============================================================
+// Parish price premium vs island-average price for the latest quarter.
+// Derived from FOI/Locate Jersey rough parish bands: central + coastal
+// command a premium, rural north and east discount.
+const PARISH_PREMIUM = {
+  SH: 0.92, SC: 1.02, SS: 1.00, SB: 1.18, SL: 1.10, TR: 1.05,
+  GR: 1.08, SM: 1.06, SMa: 0.98, SO: 0.96, SP: 1.00, SJ: 0.97,
+};
+
+// Indicative Jersey gross salaries by sector for the job-match step.
+// Order matters — used to render a ladder.
+const JERSEY_JOBS = [
+  { sector: 'Retail / hospitality (entry)', salary: 26000 },
+  { sector: 'Admin / clerical', salary: 32000 },
+  { sector: 'Teacher (NQT)', salary: 38000 },
+  { sector: 'Trades (qualified)', salary: 42000 },
+  { sector: 'Nurse (Band 5–6)', salary: 45000 },
+  { sector: 'Finance — junior analyst', salary: 52000 },
+  { sector: 'Software engineer', salary: 60000 },
+  { sector: 'Solicitor / accountant (qualified)', salary: 75000 },
+  { sector: 'Finance — senior / VP', salary: 110000 },
+  { sector: 'Partner / director', salary: 180000 },
+];
+
+// Latest-quarter average price for each property type, in £k.
+function latestPriceK(bedKey) {
+  const last = HPI_DATA[HPI_DATA.length - 1];
+  return last[bedKey];
+}
+
+// Monthly mortgage payment using the standard amortisation formula.
+function monthlyMortgage(principal, annualRatePct, years) {
+  const r = annualRatePct / 100 / 12;
+  const n = years * 12;
+  if (r === 0) return principal / n;
+  return principal * r / (1 - Math.pow(1 + r, -n));
+}
+
+// Simplified Jersey payslip — educational, not a tax engine.
+// 20% income tax above £20,500 exemption; 6% social security up to £60,000;
+// optional 5% private pension contribution.
+function jerseyPayslip(grossAnnual, pensionPct = 5) {
+  const exemption = 20500;
+  const tax = Math.max(0, grossAnnual - exemption) * 0.20;
+  const ssCeiling = 60000;
+  const ss = Math.min(grossAnnual, ssCeiling) * 0.06;
+  const pension = grossAnnual * (pensionPct / 100);
+  const takeHome = grossAnnual - tax - ss - pension;
+  return {
+    grossAnnual, grossMonthly: grossAnnual / 12,
+    tax, taxMonthly: tax / 12,
+    ss, ssMonthly: ss / 12,
+    pension, pensionMonthly: pension / 12,
+    takeHome, takeHomeMonthly: takeHome / 12,
+  };
+}
+
+// Required gross salary so that mortgage payment is the *stricter* of
+// 35% of net monthly take-home, or principal ≤ 4.5× gross.
+function requiredSalary(principal, monthlyMortgage) {
+  const fromMultiple = principal / 4.5;
+  // Binary-search for the salary where 35% of net monthly covers the mortgage.
+  let lo = 15000, hi = 300000;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const ps = jerseyPayslip(mid, 5);
+    if (ps.takeHomeMonthly * 0.35 < monthlyMortgage) lo = mid;
+    else hi = mid;
+  }
+  return Math.max(fromMultiple, hi);
+}
+
+function gbp(n, decimals = 0) {
+  if (!isFinite(n)) return '£—';
+  return '£' + Math.round(n).toLocaleString('en-GB', { maximumFractionDigits: decimals });
+}
+function gbpK(n) {
+  if (!isFinite(n)) return '£—';
+  if (n >= 1_000_000) return '£' + (n / 1_000_000).toFixed(2) + 'M';
+  if (n >= 1000) return '£' + Math.round(n / 1000).toLocaleString() + 'k';
+  return gbp(n);
+}
+
+function initAffordabilityJourney() {
+  const els = {
+    parish: document.getElementById('affParish'),
+    beds: document.getElementById('affBeds'),
+    deposit: document.getElementById('affDeposit'),
+    save: document.getElementById('affSave'),
+    term: document.getElementById('affTerm'),
+    rate: document.getElementById('affRate'),
+    depositVal: document.getElementById('affDepositVal'),
+    saveVal: document.getElementById('affSaveVal'),
+    termVal: document.getElementById('affTermVal'),
+    rateVal: document.getElementById('affRateVal'),
+    outPrice: document.getElementById('outPrice'),
+    outDeposit: document.getElementById('outDeposit'),
+    outYears: document.getElementById('outYears'),
+    outBorrow: document.getElementById('outBorrow'),
+    outMonthly: document.getElementById('outMonthly'),
+    outInterest: document.getElementById('outInterest'),
+    outSalary: document.getElementById('outSalary'),
+    jobMatch: document.getElementById('jobMatch'),
+    payslip: document.getElementById('payslip'),
+    budget: document.getElementById('budget'),
+  };
+  if (!els.parish) return;
+
+  const recompute = () => {
+    const parishKey = els.parish.value;
+    const bedKey = els.beds.value;
+    const depositPct = +els.deposit.value;
+    const monthlySave = +els.save.value;
+    const term = +els.term.value;
+    const rate = +els.rate.value;
+
+    els.depositVal.textContent = depositPct + '%';
+    els.saveVal.textContent = monthlySave.toLocaleString();
+    els.termVal.textContent = term;
+    els.rateVal.textContent = rate.toFixed(1);
+
+    // Price: latest island avg × parish premium (HPI table values are in £k).
+    const priceK = latestPriceK(bedKey) * PARISH_PREMIUM[parishKey];
+    const price = priceK * 1000;
+    const deposit = price * depositPct / 100;
+    const borrow = price - deposit;
+    const yearsToSave = deposit / (monthlySave * 12);
+    const monthly = monthlyMortgage(borrow, rate, term);
+    const totalPaid = monthly * term * 12;
+    const totalInterest = totalPaid - borrow;
+    const salary = requiredSalary(borrow, monthly);
+
+    els.outPrice.textContent = gbpK(price);
+    els.outDeposit.textContent = gbpK(deposit);
+    els.outYears.textContent = yearsToSave.toFixed(1) + ' yrs';
+    els.outBorrow.textContent = gbpK(borrow);
+    els.outMonthly.textContent = gbp(monthly) + '/mo';
+    els.outInterest.textContent = gbpK(totalInterest);
+    els.outSalary.textContent = gbp(Math.ceil(salary / 1000) * 1000);
+
+    // Job ladder — colour each by whether it matches/stretches/fails the bar.
+    els.jobMatch.innerHTML = JERSEY_JOBS.map(j => {
+      let cls = 'job-chip out';
+      if (j.salary >= salary) cls = 'job-chip match';
+      else if (j.salary >= salary * 0.75) cls = 'job-chip stretch';
+      return `<span class="${cls}">${j.sector} <span class="job-pay">${gbpK(j.salary)}</span></span>`;
+    }).join('');
+
+    // Payslip at the *required* salary so the rest of the journey balances.
+    const ps = jerseyPayslip(salary, 5);
+    els.payslip.innerHTML = `
+      <div class="payslip-row"><span class="label-cell">Gross monthly salary</span><span class="amount">${gbp(ps.grossMonthly)}</span></div>
+      <div class="payslip-row deduction"><span class="label-cell">Income tax (20% above £20,500)</span><span class="amount">−${gbp(ps.taxMonthly)}</span></div>
+      <div class="payslip-row deduction"><span class="label-cell">Social security (6%)</span><span class="amount">−${gbp(ps.ssMonthly)}</span></div>
+      <div class="payslip-row deduction"><span class="label-cell">Pension contribution (5%)</span><span class="amount">−${gbp(ps.pensionMonthly)}</span></div>
+      <div class="payslip-row total"><span class="label-cell">Take-home each month</span><span class="amount">${gbp(ps.takeHomeMonthly)}</span></div>
+    `;
+
+    // Budget: mortgage first, then 50/30/20 on the remainder.
+    const afterMortgage = Math.max(0, ps.takeHomeMonthly - monthly);
+    const needs = afterMortgage * 0.50;
+    const wants = afterMortgage * 0.30;
+    const save = afterMortgage * 0.20;
+    const max = Math.max(monthly, needs, wants, save) || 1;
+    const bar = (cls, lbl, amt) => `
+      <div class="budget-row ${cls}">
+        <div class="b-label">${lbl}</div>
+        <div class="b-bar"><div class="b-fill" style="width:${(amt / max * 100).toFixed(1)}%">${cls === 'mortgage' ? 'mortgage' : ''}</div></div>
+        <div class="b-amount">${gbp(amt)}</div>
+      </div>`;
+    els.budget.innerHTML =
+      bar('mortgage', 'Mortgage', monthly) +
+      bar('needs', 'Needs (50%)', needs) +
+      bar('wants', 'Wants (30%)', wants) +
+      bar('save', 'Save / invest (20%)', save);
+
+    // Update vote section if present (depends on required salary).
+    renderVoteStats(salary);
+  };
+
+  ['parish','beds','deposit','save','term','rate'].forEach(k => {
+    els[k].addEventListener('input', recompute);
+    els[k].addEventListener('change', recompute);
+  });
+  recompute();
+}
+
+// ============================================================
+// INVESTMENT RISK COMPARISON
+// ============================================================
+// Future value of a monthly contribution at a given annual rate.
+function futureValueMonthly(monthly, annualRatePct, years) {
+  const r = annualRatePct / 100 / 12;
+  const n = years * 12;
+  if (r === 0) return monthly * n;
+  return monthly * ((Math.pow(1 + r, n) - 1) / r);
+}
+
+function initInvestmentCalc() {
+  const amt = document.getElementById('invAmt');
+  const yrs = document.getElementById('invYears');
+  if (!amt || !yrs) return;
+  const amtVal = document.getElementById('invAmtVal');
+  const yrsVal = document.getElementById('invYearsVal');
+  const yrsTxt = document.querySelectorAll('.invYearsTxt');
+  const low = document.getElementById('invLow');
+  const mid = document.getElementById('invMid');
+  const high = document.getElementById('invHigh');
+  const lowNote = document.getElementById('invLowNote');
+  const midNote = document.getElementById('invMidNote');
+  const highNote = document.getElementById('invHighNote');
+
+  const recompute = () => {
+    const m = +amt.value;
+    const y = +yrs.value;
+    amtVal.textContent = m;
+    yrsVal.textContent = y;
+    yrsTxt.forEach(el => el.textContent = y);
+
+    const contributed = m * 12 * y;
+    const vLow = futureValueMonthly(m, 3, y);
+    const vMid = futureValueMonthly(m, 7, y);
+    const vHighDown = futureValueMonthly(m, -5, y);
+    const vHighUp = futureValueMonthly(m, 15, y);
+
+    low.textContent = gbpK(vLow);
+    mid.textContent = gbpK(vMid);
+    high.textContent = `${gbpK(Math.max(0, vHighDown))} – ${gbpK(vHighUp)}`;
+    lowNote.textContent = `You put in ${gbpK(contributed)}; interest adds ${gbpK(vLow - contributed)}.`;
+    midNote.textContent = `You put in ${gbpK(contributed)}; growth adds ${gbpK(vMid - contributed)}.`;
+    highNote.textContent = `Could end up below ${gbpK(Math.max(0, vHighDown))} or above ${gbpK(vHighUp)} — wide range = real risk.`;
+  };
+  amt.addEventListener('input', recompute);
+  yrs.addEventListener('input', recompute);
+  recompute();
+}
+
+// ============================================================
+// CIVIC STAKE
+// ============================================================
+function renderVoteStats(annualSalary) {
+  const host = document.getElementById('voteStats');
+  if (!host) return;
+  const workingYears = 40;
+  const lifetimeGross = annualSalary * workingYears;
+  const ps = jerseyPayslip(annualSalary, 5);
+  const lifetimeTax = ps.tax * workingYears;
+  const lifetimeSS = ps.ss * workingYears;
+  const lifetimeContribution = lifetimeTax + lifetimeSS;
+  host.innerHTML = `
+    <div><div class="big-number">${gbpK(lifetimeGross)}</div><div class="big-label">lifetime earnings</div></div>
+    <div><div class="big-number">${gbpK(lifetimeTax)}</div><div class="big-label">income tax</div></div>
+    <div><div class="big-number">${gbpK(lifetimeSS)}</div><div class="big-label">social security</div></div>
+    <div><div class="big-number">${gbpK(lifetimeContribution)}</div><div class="big-label">total to States</div></div>
+  `;
+}
 
 // ============================================================
 // 1. PURCHASE PRICE TRENDS
