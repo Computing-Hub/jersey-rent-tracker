@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jersey Rent Tracker | What Does Jersey Really Pay?</title>
+<meta name="description" content="Track Jersey property prices and rents. Open government data combined with crowdsourced real rent submissions from tenants across the island.">
+<meta property="og:title" content="Jersey Rent Tracker">
+<meta property="og:description" content="What does Jersey really pay? Track property prices and rents across all 12 parishes.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,700;9..144,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="logo">Rent<span>Tracker</span>.je</div>
+  <ul>
+    <li><a href="#prices">Prices</a></li>
+    <li><a href="#rentals">Rentals</a></li>
+    <li><a href="#map-section">Map</a></li>
+    <li><a href="#submit">Submit</a></li>
+    <li><a href="#community">Community <span class="nav-badge" id="submissionCount">0</span></a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>What Does Jersey <span>Really</span> Pay?</h1>
+  <p>Property prices &amp; rents across all 12 parishes — powered by gov.je open data and anonymous submissions from real tenants.</p>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="val">£299k</div>
+      <div class="label">Avg 1-bed flat</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">£1,455</div>
+      <div class="label">Avg 2-bed rent/mo</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">-17%</div>
+      <div class="label">From 2022 peak</div>
+    </div>
+    <div class="hero-stat">
+      <div class="val">82%</div>
+      <div class="label">Renters in stress</div>
+    </div>
+  </div>
+  <div style="margin-top:1rem;position:relative">
+    <span id="dataStatus" class="data-status offline">Checking…</span>
+  </div>
+</div>
+
+<!-- PURCHASE PRICE TRENDS -->
+<section id="prices">
+  <h2 class="section-title">Property Purchase Prices</h2>
+  <p class="section-sub">Quarterly average prices from Statistics Jersey (2002–2025). <span class="info-tag">Gov.je Open Data</span></p>
+
+  <div class="tab-bar" id="priceTabs">
+    <button class="tab-btn active" data-type="all">All Types</button>
+    <button class="tab-btn" data-type="1bf">1-bed Flats</button>
+    <button class="tab-btn" data-type="2bf">2-bed Flats</button>
+    <button class="tab-btn" data-type="2bh">2-bed Houses</button>
+    <button class="tab-btn" data-type="3bh">3-bed Houses</button>
+    <button class="tab-btn" data-type="4bh">4-bed Houses</button>
+  </div>
+  <div class="card">
+    <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+  </div>
+
+  <div class="chart-row">
+    <div class="card">
+      <h3>House Price Index</h3>
+      <p class="card-muted">Non-seasonally adjusted, base = 100 (2002)</p>
+      <div class="chart-wrap"><canvas id="hpiChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Annual Sales by Parish (2025)</h3>
+      <div class="chart-wrap"><canvas id="parishChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Parish Turnover History</h3>
+    <p class="card-muted">Transactions per parish per year (HPI-eligible properties)</p>
+    <div class="table-scroll" id="parishTableWrap"></div>
+  </div>
+</section>
+
+<!-- RENTAL INDEX -->
+<section id="rentals">
+  <h2 class="section-title">Private Sector Rental Index</h2>
+  <p class="section-sub">
+    Advertised rental prices tracked by Statistics Jersey since 2007.
+    <span class="info-tag">Gov.je Open Data</span>
+    <span class="info-tag" style="background:#fff3e0;color:#e8a838">Gap: 2013–2015</span>
+  </p>
+  <div class="card">
+    <h3>Rental Index &amp; Average Monthly Rents</h3>
+    <p class="card-muted">Left axis: index (2002 = 100). Right axis: advertised monthly rent (£). Note the 2013–2015 data gap when the Population Office stopped recording rents.</p>
+    <div class="chart-wrap"><canvas id="rentalIndexChart"></canvas></div>
+  </div>
+</section>
+
+<!-- MAP -->
+<section id="map-section">
+  <h2 class="section-title">Parish Map</h2>
+  <p class="section-sub">Choropleth by transaction volume. Gold dots show crowdsourced rent submissions. Click a parish for details.</p>
+  <div id="map"></div>
+  <div class="map-legend">
+    <span><i style="background:#c44536"></i> High activity (&gt;100 sales)</span>
+    <span><i style="background:#e8a838"></i> Medium (40–100)</span>
+    <span><i style="background:#16697a"></i> Low (&lt;40)</span>
+    <span><i style="background:#e8a838;border-radius:50%"></i> Rent submission</span>
+  </div>
+</section>
+
+<!-- SUBMIT FORM -->
+<section id="submit">
+  <div class="submit-section">
+    <h2>Share What You Pay</h2>
+    <p class="section-sub">Help build Jersey's first crowdsourced rent database. All submissions are anonymous — no personal data collected.</p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Parish</label>
+        <select id="fParish">
+          <option value="">Select parish…</option>
+          <option>St Helier</option><option>St Clement</option><option>St Saviour</option>
+          <option>St Brelade</option><option>St Lawrence</option><option>Trinity</option>
+          <option>Grouville</option><option>St Martin</option><option>St Mary</option>
+          <option>St Ouen</option><option>St Peter</option><option>St John</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Property Type</label>
+        <select id="fType">
+          <option value="">Select type…</option>
+          <option>Bedsit</option><option>1-bed Flat</option><option>2-bed Flat</option>
+          <option>3-bed Flat</option><option>1-bed House</option><option>2-bed House</option>
+          <option>3-bed House</option><option>4-bed House</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Monthly Rent (£)</label>
+        <input type="number" id="fRent" placeholder="e.g. 1400" min="0" step="50">
+      </div>
+      <div class="form-group">
+        <label>Year Moved In</label>
+        <select id="fYear">
+          <option value="">Select year…</option>
+          <option>2026</option><option>2025</option><option>2024</option><option>2023</option>
+          <option>2022</option><option>2021</option><option>2020</option><option>Before 2020</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-submit" id="btnSubmit">Submit Anonymously</button>
+    <div id="formMsg"></div>
+  </div>
+</section>
+
+<!-- COMMUNITY DATA -->
+<section id="community">
+  <h2 class="section-title">Community Submissions</h2>
+  <p class="section-sub">Anonymous rent data from real Jersey tenants. Average rent by parish shown below.</p>
+  <div class="card">
+    <div class="chart-wrap"><canvas id="crowdChart"></canvas></div>
+  </div>
+  <div class="card">
+    <table class="data-table">
+      <thead><tr><th>Parish</th><th>Type</th><th>Rent/mo</th><th>Since</th></tr></thead>
+      <tbody id="crowdBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <p>Data: <a href="https://opendata.gov.je/dataset/house-prices" target="_blank">Statistics Jersey Open Data</a> · Open Government Licence Jersey v1.0</p>
+  <div class="footer-links">
+    <a href="https://github.com/YOUR_USERNAME/jersey-rent-tracker" target="_blank">GitHub</a>
+    <a href="https://coderra.je" target="_blank">Coderra</a>
+  </div>
+  <p style="margin-top:0.5rem">A Jersey civic tech project · © 2026</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
