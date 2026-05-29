@@ -417,6 +417,57 @@ section { padding: 3rem 1.5rem; max-width: 1100px; margin: 0 auto; }
 }
 .vote-link:hover { color: var(--rust); }
 
+/* PARISH MODAL */
+.modal {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.modal[hidden] { display: none; }
+.modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(26,26,46,0.55);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+.modal-card {
+  position: relative;
+  background: #fff; border-radius: 14px;
+  padding: 1.75rem 1.5rem 1.25rem;
+  max-width: 600px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  max-height: 90vh; overflow-y: auto;
+  border-top: 5px solid var(--gold);
+}
+.modal-close {
+  position: absolute; top: 0.4rem; right: 0.7rem;
+  background: none; border: none; cursor: pointer;
+  font-size: 1.9rem; line-height: 1; color: var(--slate);
+  padding: 0.2rem 0.5rem;
+}
+.modal-close:hover { color: var(--rust); }
+.modal-card h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.5rem; margin-bottom: 0.2rem;
+}
+.modal-sub { color: var(--slate); font-size: 0.85rem; margin-bottom: 1rem; }
+.modal-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.modal-table th {
+  text-align: left; padding: 0.55rem 0.6rem;
+  background: var(--sand);
+  font-size: 0.68rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--slate);
+}
+.modal-table th:not(:first-child), .modal-table td:not(:first-child) { text-align: right; }
+.modal-table td { padding: 0.6rem; border-bottom: 1px solid #eee; font-variant-numeric: tabular-nums; }
+.modal-table td.label { font-weight: 600; }
+.modal-table td.price { font-weight: 700; color: var(--rust); }
+.modal-table td.deposit { color: var(--ocean); font-weight: 600; }
+.modal-table td.rent { color: var(--green); font-weight: 600; }
+.modal-foot { margin-top: 0.9rem; font-size: 0.8rem; color: var(--slate); line-height: 1.5; }
+.modal-foot a { color: var(--rust); font-weight: 600; text-decoration: none; }
+.modal-foot a:hover { text-decoration: underline; }
+
 /* FOOTER */
 footer {
   background: var(--ink);

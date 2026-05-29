@@ -435,6 +435,23 @@
   <p style="margin-top:0.5rem">A Jersey civic tech project · © 2026</p>
 </footer>
 
+<!-- PARISH PRICE MODAL -->
+<div id="parishModal" class="modal" hidden>
+  <div class="modal-overlay" data-modal-close></div>
+  <div class="modal-card" role="dialog" aria-labelledby="modalParishName">
+    <button class="modal-close" data-modal-close aria-label="Close">&times;</button>
+    <h3 id="modalParishName">Parish</h3>
+    <p class="modal-sub" id="modalParishSub"></p>
+    <table class="modal-table">
+      <thead>
+        <tr><th>Property</th><th>Avg buying price</th><th>10% deposit</th><th>Monthly rent</th></tr>
+      </thead>
+      <tbody id="modalRows"></tbody>
+    </table>
+    <p class="modal-foot">Island-average prices adjusted by a rough parish premium — illustrative, not a valuation. <a href="#afford" data-modal-close>Run your own numbers in the Affordability Journey →</a></p>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script type="module" src="js/app.js"></script>

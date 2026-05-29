@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initAffordabilityJourney();
   initInvestmentCalc();
+  initParishModal();
   initPriceChart();
   initHPIChart();
   initRentalIndexChart();
@@ -176,6 +177,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   initForm();
   await refreshCommunityData();
 });
+
+// ============================================================
+// PARISH PRICE MODAL (opens on map click)
+// ============================================================
+function showParishModal(name, key) {
+  const last = HPI_DATA[HPI_DATA.length - 1];
+  const lastRent = RENTAL_INDEX[RENTAL_INDEX.length - 1];
+  const premium = PARISH_PREMIUM[key] || 1;
+  const p25 = PARISH_TURNOVER.find(d => d.y === 2025);
+  const sales = p25 ? (p25[key] || 0) : 0;
+
+  const premiumPct = (premium - 1) * 100;
+  const premiumStr = premiumPct >= 0 ? `+${premiumPct.toFixed(0)}%` : `${premiumPct.toFixed(0)}%`;
+
+  document.getElementById('modalParishName').textContent = name;
+  document.getElementById('modalParishSub').textContent =
+    `${sales} sales recorded in 2025 · parish premium ${premiumStr} vs island average`;
+
+  const rows = [
+    { label: '1-bed Flat',  saleK: last.f1, rent: lastRent.f1 },
+    { label: '2-bed Flat',  saleK: last.f2, rent: lastRent.f2 },
+    { label: '2-bed House', saleK: last.h2, rent: lastRent.h2 },
+    { label: '3-bed House', saleK: last.h3, rent: lastRent.h3 },
+  ];
+  document.getElementById('modalRows').innerHTML = rows.map(r => {
+    const sale = r.saleK * 1000 * premium;
+    const dep = sale * 0.10;
+    const rent = r.rent * premium;
+    return `<tr>
+      <td class="label">${r.label}</td>
+      <td class="price">${gbpK(sale)}</td>
+      <td class="deposit">${gbpK(dep)}</td>
+      <td class="rent">${gbp(rent)}/mo</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('parishModal').hidden = false;
+}
+
+function initParishModal() {
+  const modal = document.getElementById('parishModal');
+  if (!modal) return;
+  modal.addEventListener('click', (e) => {
+    if (e.target.closest('[data-modal-close]')) modal.hidden = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
+  });
+}
 
 // ============================================================
 // AFFORDABILITY JOURNEY (educational centrepiece)
@@ -600,13 +650,7 @@ async function initMap() {
       onEachFeature: (feature, layer) => {
         const name = feature.properties.name;
         const key = feature.properties.key;
-        const sales = p25[key] || 0;
-        layer.bindPopup(`
-          <div style="font-family:DM Sans,sans-serif;min-width:180px">
-            <strong style="font-size:1.05rem">${name}</strong><br>
-            <span style="color:#6b7280;font-size:0.85rem">2025 sales: <strong>${sales}</strong></span>
-          </div>
-        `);
+        layer.on('click', () => showParishModal(name, key));
         layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.45, weight: 2.5 }); });
         layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.25, weight: 1.5 }); });
       },
